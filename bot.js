@@ -1,9 +1,15 @@
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const Papa = require('papaparse');
-const { Client } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const notifier = require('node-notifier'); // Biblioteca para notificações e sons
-const client = new Client();
+
+// Configura o cliente do WhatsApp com autenticação local
+const client = new Client({
+    authStrategy: new LocalAuth({
+        dataPath: './session' // Diretório onde a sessão será salva
+    })
+});
 
 // Função para formatar a entrada do usuário
 function formatarEntrada(texto) {
