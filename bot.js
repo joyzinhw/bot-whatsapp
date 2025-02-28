@@ -8,7 +8,8 @@ const notifier = require('node-notifier'); // Biblioteca para notificações e s
 const client = new Client({
     authStrategy: new LocalAuth({
         dataPath: './session' // Diretório onde a sessão será salva
-    })
+    }),
+    chromiumArgs: ['--no-sandbox'] // Adiciona a flag --no-sandbox
 });
 
 // Função para formatar a entrada do usuário
@@ -258,61 +259,32 @@ client.on('message', async msg => {
                         break;
                     case 'medico':
                         state.medico = formatarEntrada(msg.body);
-                        state.step = 'horario';
-                        await client.sendMessage(from, 'Qual horário deseja marcar?');
+                        state.step = 'procedimento';
+                        await client.sendMessage(from, 'Qual procedimento deseja realizar?');
                         break;
-                    case 'horario':
-                        state.horario = msg.body;
-                        state.step = 'dia';
-                        await client.sendMessage(from, 'Qual dia você deseja que a consulta seja realizada?');
-                        break;
-                    case 'dia':
-                        state.dia = msg.body;
-                        const confirmacao = `Consulta agendada:
-Paciente: ${state.nomePaciente}
-Médico: ${state.medico}
-Horário: ${state.horario}
-Dia: ${state.dia}
-Se precisar de algo mais, estou à disposição.`;
-                        await client.sendMessage(from, confirmacao);
-                        delete userState[from];
-                        await delay(2000);
-                        await enviarMenu(from, state.nomePaciente.split(" ")[0]);
+                    case 'procedimento':
+                        state.procedimento = formatarEntrada(msg.body);
+                        state.step = 'finalizar';
+                        await client.sendMessage(from, 'Consulta agendada com sucesso! Precisa de mais alguma coisa?');
                         break;
                     case 'consultarPreco':
-                        const procedimentoPreco = formatarEntrada(msg.body);
-                        const respostaPreco = buscarPreco(procedimentoPreco);
-                        await client.sendMessage(from, respostaPreco);
-                        delete userState[from]; // Limpa o estado do usuário
-                        await delay(2000);
-                        await enviarMenu(from, nome);
+                        await client.sendMessage(from, buscarPreco(msg.body));
+                        state.step = null;
                         break;
                     case 'verProcedimento':
-                        const procedimento = formatarEntrada(msg.body);
-                        const resposta = verificarProcedimento(procedimento);
-                        await client.sendMessage(from, resposta);
-                        delete userState[from]; // Limpa o estado do usuário
-                        await delay(2000);
+                        await client.sendMessage(from, verificarProcedimento(msg.body));
+                        state.step = null;
+                        break;
+                    default:
                         await enviarMenu(from, nome);
                         break;
                 }
             } catch (error) {
-                console.error('Erro ao processar mensagem para o usuário em estado:', from, error);
-                await client.sendMessage(from, 'Desculpe, ocorreu um erro ao processar sua solicitação.');
+                console.error('Erro no processamento de mensagem:', error);
             }
         } else {
-            // Se a mensagem corresponde a uma opção de menu, processa
-            if (menuOptions[msg.body]) {
-                try {
-                    await menuOptions[msg.body](from);
-                } catch (error) {
-                    console.error('Erro ao processar a opção do menu:', error);
-                    await client.sendMessage(from, 'Desculpe, ocorreu um erro ao processar sua solicitação.');
-                }
-            } else {
-                // Caso não corresponda a uma opção específica, envia o menu principal
-                await enviarMenu(from, nome);
-            }
+            // Exibe o menu inicial
+            await enviarMenu(from, nome);
         }
     }
 });
