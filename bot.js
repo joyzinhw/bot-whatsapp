@@ -1,30 +1,27 @@
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const Papa = require('papaparse');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const notifier = require('node-notifier'); // Biblioteca para notificações e sons
+const notifier = require('node-notifier'); // Para notificações
 
 // Configura o cliente do WhatsApp com autenticação local
 const client = new Client({
     authStrategy: new LocalAuth({
-        dataPath: './session' // Diretório onde a sessão será salva
+        dataPath: './session'
     }),
-    chromiumArgs: ['--no-sandbox'] // Adiciona a flag --no-sandbox
+    chromiumArgs: ['--no-sandbox', '--disable-setuid-sandbox'] // Adiciona a flag --no-sandbox
 });
 
 // Função para formatar a entrada do usuário
 function formatarEntrada(texto) {
     if (!texto) return texto;
 
-    // Verifica se o texto está todo em maiúsculo ou todo em minúsculo
     const todoMaiusculo = texto === texto.toUpperCase();
     const todoMinusculo = texto === texto.toLowerCase();
 
     if (todoMaiusculo || todoMinusculo) {
-        // Transforma a primeira letra em maiúscula e o restante em minúscula
         return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
     } else {
-        // Apenas transforma a primeira letra em maiúscula
         return texto.charAt(0).toUpperCase() + texto.slice(1);
     }
 }
@@ -81,12 +78,11 @@ const menuOptions = {
     '1': agendarConsulta,
     '2': async (from) => {
         await client.sendMessage(from, 'Se precisar de algo mais, estou à disposição.');
-        // Ativa o alarme
         notifier.notify({
             title: 'Alerta',
             message: 'Uma pessoa humana precisa responder!',
-            sound: true, // Reproduz um som de notificação
-            wait: true // Espera até que a notificação seja fechada
+            sound: true,
+            wait: true
         });
     },
     '3': consultarPreco,
@@ -99,7 +95,7 @@ const menuOptions = {
     '7': pegarExame,
     '8': async (from) => {
         await client.sendMessage(from, 'Atendimento encerrado. Para retornar, basta enviar uma mensagem.');
-        delete userState[from]; // Encerra o estado do usuário
+        delete userState[from];
     }
 };
 
@@ -108,7 +104,6 @@ async function consultarPreco(from) {
     console.log('Enviando solicitação de preço para:', from);
     await client.sendMessage(from, 'Digite o nome do procedimento que deseja consultar o preço.');
 
-    // Define o estado do usuário para aguardar o nome do procedimento
     userState[from] = { step: 'consultarPreco' };
 }
 
@@ -138,7 +133,6 @@ async function verProcedimentos(from) {
     console.log('Solicitando nome do procedimento para:', from);
     await client.sendMessage(from, 'Digite o nome do procedimento que deseja verificar se é realizado na clínica.');
 
-    // Define o estado do usuário para aguardar o nome do procedimento
     userState[from] = { step: 'verProcedimento' };
 }
 
@@ -186,24 +180,21 @@ Opções:
 function buscarMedicoPlantao() {
     const agora = new Date();
     const diasSemana = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-    const diaSemana = diasSemana[agora.getDay()]; // Obtém o dia da semana atual
+    const diaSemana = diasSemana[agora.getDay()];
 
     const horaAtual = agora.getHours();
     const minutoAtual = agora.getMinutes();
-    const minutosAtual = horaAtual * 60 + minutoAtual; // Converte a hora atual para minutos
+    const minutosAtual = horaAtual * 60 + minutoAtual;
 
     const medico = plantao.find(p => {
         const [horaInicioStr, horaFimStr] = p.Horário.split('-').map(h => h.trim());
         
-        // Converte o horário de início para minutos
         const horaInicio = parseInt(horaInicioStr.split('H')[0]);
         const minutosInicio = horaInicio * 60;
 
-        // Converte o horário de fim para minutos
         const horaFim = parseInt(horaFimStr.split('H')[0]);
-        const minutosFim = horaFim === 0 ? 24 * 60 : horaFim * 60; // Se for 0H, considera como 24H
+        const minutosFim = horaFim === 0 ? 24 * 60 : horaFim * 60;
 
-        // Verifica se o dia da semana e o horário atual estão dentro do intervalo de plantão
         return p['Dia da Semana'].toLowerCase() === diaSemana &&
                minutosAtual >= minutosInicio && minutosAtual < minutosFim;
     });
@@ -234,7 +225,6 @@ async function pegarExame(from) {
 client.on('message', async msg => {
     const from = msg.from;
 
-    // Verifica se a mensagem é de um usuário (não é do bot)
     if (from.endsWith('@c.us')) {
         console.log('Mensagem recebida de:', from, 'Conteúdo:', msg.body);
 
@@ -247,7 +237,6 @@ client.on('message', async msg => {
         }
         const nome = contato.pushname ? formatarEntrada(contato.pushname.split(" ")[0]) : 'Usuário';
 
-        // Se o usuário já está em um estado de conversa (ex: agendamento), processa a resposta
         if (userState[from]) {
             const state = userState[from];
             try {
@@ -283,7 +272,6 @@ client.on('message', async msg => {
                 console.error('Erro no processamento de mensagem:', error);
             }
         } else {
-            // Exibe o menu inicial
             await enviarMenu(from, nome);
         }
     }
